@@ -1,30 +1,23 @@
 package sample;
 
 import javafx.animation.AnimationTimer;
+import javafx.animation.ScaleTransition;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.ToggleGroup;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.util.Duration;
 
 import java.net.URL;
 import java.util.*;
 
 public class Controller  implements Initializable {
-    class run extends Thread{
-        @Override
-        public void run() {
-
-            super.run();
-        }
-    }
     @FXML
     AnchorPane pane;
     @FXML
@@ -32,44 +25,50 @@ public class Controller  implements Initializable {
     @FXML
     RadioButton bfsRadio,dfsRadio;
     int  num=50;
-    int width =270/num,height=270/num;
-
+    double width =270/num*3.3,height=270/num*3.3;
     Rectangle arr[][]=new Rectangle[num][num];
     int vis[][]=new int[num][num];
     ObservableList<pair> list= FXCollections.observableArrayList();
     int index=0;
+    Map<pair,pair>map=new HashMap<>();
     static boolean found=false,mousePressed=false,run=false;
+    Color walls=Color.BLACK,maze=Color.WHITE;
+    
     public void animate(ActionEvent actionEvent) throws InterruptedException {
+
+
+
         run=true;
         new AnimationTimer() {
             long lastTick = 0;
+            boolean b;
             public void handle(long now) {
-                if (lastTick == 0) {
+                if ((now - lastTick) > 100000000) {
                     lastTick = now;
                     if(run)
-                    update();
-                    return;
-                }
-                if (now - lastTick > 1000000000 / 1000000) {
-                    lastTick = now;
-                    if(run)
-                    update();
+                    {
+                        b =update();
+                    }
+                    if(!b||!run) {
+                        stop();
+                    }
                 }
             }
         }.start();
-        iterativeDFS(arr,num-1,num-1);
     }
 
     public void reset(ActionEvent actionEvent) {
+
         run=false;
-            draw();
+
         vis=new int[num][num];
         index=0;
         list= FXCollections.observableArrayList();
-
         found=false;
         mousePressed=false;
-
+        pane.getChildren().removeAll();
+        pane.getChildren().clear();
+        draw();
     }
 
     class pair{
@@ -91,7 +90,7 @@ public class Controller  implements Initializable {
         while(!stack.isEmpty()&&!found)
         {
             pair p=stack.pop();
-            if(arr[p.x][p.y].getFill()==Color.RED||vis[p.x][p.y]==1||found)
+            if(arr[p.x][p.y].getFill()==walls||vis[p.x][p.y]==1||found)
                 continue;
             vis[p.x][p.y]=1;
 
@@ -102,20 +101,38 @@ public class Controller  implements Initializable {
                 found=true;
                 p.x*=-1;
                 p.y*=-1;
+
             }
             if(p.x>=0&&p.y>=0) {
 
                 if(p.x+1<arr.length)
-                    stack.push(new pair(p.x + 1, p.y)); //go down
+                {
+                    pair child=new pair(p.x + 1, p.y);
+                    stack.push(child); //go down
+                    map.put(child,p);
+                }
+                if(p.y-1>=0)
+                {
+                    pair child=new pair(p.x, p.y - 1);
+                    stack.push(child); //go left
+                    map.put(child,p);
+                }
 
                 if(p.y+1<arr[0].length)
-                    stack.push(new pair(p.x, p.y + 1)); //go right
+                {
+                    pair child=new pair(p.x, p.y + 1);
+                    stack.push(child); //go down
+                    map.put(child,p);
+                }
 
                 if(p.x-1>=0)
-                    stack.push(new pair(p.x - 1, p.y)); //go up
+                {
+                    pair child=new pair(p.x - 1, p.y);
+                    stack.push(child); //go down
+                    map.put(child,p);
+                }
 
-                if(p.y-1>=0)
-                    stack.push(new pair(p.x, p.y - 1)); //go left
+
             }
         }
     }
@@ -129,7 +146,7 @@ public class Controller  implements Initializable {
         while(!q.isEmpty()&&!found)
         {
             pair p=q.poll();
-            if(arr[p.x][p.y].getFill()==Color.RED||vis[p.x][p.y]==1||found)
+            if(arr[p.x][p.y].getFill()==walls||vis[p.x][p.y]==1||found)
                 continue;
             vis[p.x][p.y]=1;
 
@@ -141,18 +158,34 @@ public class Controller  implements Initializable {
                 p.y*=-1;
             }
             if(p.x+1<arr.length)
-            q.add(new pair(p.x+1,p.y));
+            {
+                pair child=new pair(p.x+1,p.y);
+                map.put(child,p);
+                q.add(child);
+            }
             if(p.x-1>=0)
-            q.add(new pair(p.x-1,p.y));
+            {
+                pair child=new pair(p.x-1,p.y);
+                map.put(child,p);
+                q.add(child);
+            }
             if(p.y+1<arr[0].length)
-            q.add(new pair(p.x,p.y+1));
+            {
+                pair child=new pair(p.x,p.y+1);
+                map.put(child,p);
+                q.add(child);
+            }
             if(p.y-1>=0)
-            q.add(new pair(p.x,p.y-1));
+            {
+                pair child=new pair(p.x,p.y-1);
+                map.put(child,p);
+                q.add(child);
+            }
 
         }
     }
     void dfs(int x,int y,int ex,int ey,Rectangle [][] arr)  {
-        if(arr[x][y].getFill()==Color.RED||vis[x][y]==1||found)
+        if(arr[x][y].getFill()==walls||vis[x][y]==1||found)
             return;
 
         vis[x][y]=1;
@@ -178,18 +211,44 @@ if(x>=0&&y>=0){
 }
 
     }
-    void update(){
-        if(list.get(index).x<0)
-            arr[list.get(index).x*-1][list.get(index).y*-1].setFill(Color.BLUE);
-        else
-        arr[list.get(index).x][list.get(index).y].setFill(Color.GREEN);
+    boolean update(){
+        pair p=list.get(index);
+        if(p.x<0)
+        {
+            int distance=0;
+            arr[p.x*-1][p.y*-1].setFill(Color.BLUE);
+            for(int i=0;i<map.size();i++)
+            {
+                pair x=map.get(p);
+                if(x==null)
+                    continue;
+                arr[x.x][x.y].setFill(Color.PURPLE);
+                distance++;
+                p=x;
+            }
+            System.out.println("distance : "+distance);
+            return false;
+        }
+
+            ScaleTransition st=new ScaleTransition(Duration.millis(400),arr[p.x][p.y]);
+            st.setFromX(1);
+            st.setFromY(1);
+            st.setToX(0.33);
+            st.setToY(0.33);
+            st.setAutoReverse(true);
+            st.setCycleCount(2);
+            st.play();
+            arr[p.x][p.y].setFill(Color.GREEN);
+
+
 
         if(index+1< list.size())
         index++;
+        return true;
     }
     public void apply(ActionEvent actionEvent) throws InterruptedException {
         if(bfsRadio.isSelected())
-       BFS(arr,num-1,num/2);
+            BFS(arr,num-1,num/2);
         else
             iterativeDFS(arr,num-1,num/2);
     }
@@ -197,7 +256,6 @@ if(x>=0&&y>=0){
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         draw();
-
     }
 
     void draw(){
@@ -206,34 +264,41 @@ if(x>=0&&y>=0){
             {
                 arr[i][y]=new Rectangle();
                 Rectangle r=arr[i][y];
-                r.setHeight(height*3);
-                r.setWidth(width*3);
-                r.setX(i*width*3.1);
-                r.setY(y*width*3.1);
-                r.setFill(Color.BLACK);
-                r.setStroke(Color.WHITE);
+                r.setHeight(height);
+                r.setWidth(width);
+                r.setX(i*width);
+                r.setY(y*height);
+                r.setFill(maze);
+                r.setStroke(Color.GRAY);
                 r.setStrokeWidth(0.5);
+
                 r.setOnMousePressed(mouseEvent -> {
                     if(!mousePressed)
                     {
                         mousePressed=true;
-                        r.setFill(Color.RED);
+                        r.setFill(walls);
                     }
                     else
                     {
                         mousePressed=false;
-                        r.setFill(Color.BLACK);
+                        r.setFill(maze);
                     }
 
 
                 });
                 r.setOnMouseMoved(mouseEvent -> {
                     if(mousePressed)
-                        r.setFill(Color.RED);
+                        r.setFill(walls);
                 });
             }
         for(int i=0;i<num;i++)
             for(int y=0;y<num;y++)
                 pane.getChildren().add(arr[i][y]);
+
+
+            Random rand=new Random();
+        for(int y=0;y<num*20;y++)
+            arr[rand.nextInt(num)][rand.nextInt(num)].setFill(walls);
+
     }
 }
